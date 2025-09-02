@@ -11,6 +11,15 @@ import imagehash
 from collections import defaultdict
 import argparse
 
+# Try to import and register HEIC support
+HEIC_SUPPORT = False
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    HEIC_SUPPORT = True
+except ImportError:
+    pass
+
 def get_image_info(filepath):
     """Get image information including file size, dimensions, and perceptual hash."""
     try:
@@ -52,8 +61,8 @@ def find_duplicates(folder_path, similarity_threshold=5):
     """
     print(f"Scanning folder: {folder_path}")
     
-    # Supported image extensions
-    supported_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
+    # Supported image extensions - NOW INCLUDING HEIC/HEIF
+    supported_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp', '.heic', '.heif'}
     
     # Get all image files
     image_files = []
@@ -172,6 +181,13 @@ def main():
     
     print("Image Duplicate Remover")
     print("=" * 30)
+    
+    # Show HEIC support status
+    if HEIC_SUPPORT:
+        print("✓ HEIC/HEIF support enabled")
+    else:
+        print("⚠ HEIC/HEIF support not available. Install pillow-heif for HEIC support:")
+        print("  pip install pillow-heif")
     
     remove_duplicates(args.folder, dry_run=not args.execute, similarity_threshold=args.similarity)
 
