@@ -2,9 +2,11 @@
 """
 Image Duplicate Remover
 Finds and removes duplicate images based on perceptual hashing, keeping the highest quality version.
+Now supports moving duplicates to a separate folder instead of deleting them.
 """
 
 import os
+import shutil
 import hashlib
 from PIL import Image
 import imagehash
@@ -118,9 +120,32 @@ def select_best_image(group):
     best = max(group, key=lambda x: (x['pixel_count'], x['file_size']))
     return best
 
-def remove_duplicates(folder_path, dry_run=True, similarity_threshold=5):
+def create_duplicates_folder(base_path):
+    """Create a 'Duplicates' folder in the base path if it doesn't exist."""
+    duplicates_folder = os.path.join(base_path, "Duplicates")
+    if not os.path.exists(duplicates_folder):
+        os.makedirs(duplicates_folder)
+        print(f"Created folder: {duplicates_folder}")
+    return duplicates_folder
+
+def handle_duplicate_filename(target_path):
+    """Handle filename conflicts when moving files to duplicates folder."""
+    if not os.path.exists(target_path):
+        return target_path
+    
+    # If file exists, add a number suffix
+    base, ext = os.path.splitext(target_path)
+    counter = 1
+    
+    while os.path.exists(f"{base}_{counter}{ext}"):
+        counter += 1
+    
+    return f"{base}_{counter}{ext}"
+
+def remove_duplicates(folder_path, dry_run=True, move_to_duplicates=False, similarity_threshold=5):
     """
     Remove duplicate images, keeping the highest quality version.
+    Can either delete duplicates or move them to a 'Duplicates' folder.
     """
     duplicate_groups = find_duplicates(folder_path, similarity_threshold)
     
@@ -130,8 +155,14 @@ def remove_duplicates(folder_path, dry_run=True, similarity_threshold=5):
     
     print(f"\nFound {len(duplicate_groups)} groups of duplicates:")
     
-    total_files_to_remove = 0
+    # Create duplicates folder if needed
+    duplicates_folder = None
+    if move_to_duplicates and not dry_run:
+        duplicates_folder = create_duplicates_folder(folder_path)
+    
+    total_files_to_process = 0
     total_space_saved = 0
+    action_word = "MOVE" if move_to_duplicates else "DELETE"
     
     for i, group in enumerate(duplicate_groups, 1):
         print(f"\nGroup {i} ({len(group)} duplicates):")
@@ -140,38 +171,67 @@ def remove_duplicates(folder_path, dry_run=True, similarity_threshold=5):
         best_image = select_best_image(group)
         
         for img in group:
-            status = "KEEP" if img == best_image else "REMOVE"
+            status = "KEEP" if img == best_image else action_word
             size_mb = img['file_size'] / (1024 * 1024)
             print(f"  [{status}] {os.path.basename(img['path'])} - {img['dimensions'][0]}x{img['dimensions'][1]} - {size_mb:.2f}MB")
             
             if img != best_image:
-                total_files_to_remove += 1
+                total_files_to_process += 1
                 total_space_saved += img['file_size']
         
-        # Remove duplicates (if not dry run)
+        # Process duplicates (if not dry run)
         if not dry_run:
             for img in group:
                 if img != best_image:
                     try:
-                        os.remove(img['path'])
-                        print(f"    Deleted: {os.path.basename(img['path'])}")
+                        if move_to_duplicates:
+                            # Move to duplicates folder
+                            filename = os.path.basename(img['path'])
+                            target_path = os.path.join(duplicates_folder, filename)
+                            
+                            # Handle filename conflicts
+                            target_path = handle_duplicate_filename(target_path)
+                            
+                            shutil.move(img['path'], target_path)
+                            print(f"    Moved: {filename} -> Duplicates/{os.path.basename(target_path)}")
+                        else:
+                            # Delete the file
+                            os.remove(img['path'])
+                            print(f"    Deleted: {os.path.basename(img['path'])}")
                     except Exception as e:
-                        print(f"    Error deleting {img['path']}: {e}")
+                        action = "moving" if move_to_duplicates else "deleting"
+                        print(f"    Error {action} {img['path']}: {e}")
     
     space_saved_mb = total_space_saved / (1024 * 1024)
     print(f"\nSummary:")
-    print(f"Files to remove: {total_files_to_remove}")
-    print(f"Space to save: {space_saved_mb:.2f} MB")
+    if move_to_duplicates:
+        print(f"Files to move to Duplicates folder: {total_files_to_process}")
+        print(f"Space to organize: {space_saved_mb:.2f} MB")
+    else:
+        print(f"Files to delete: {total_files_to_process}")
+        print(f"Space to save: {space_saved_mb:.2f} MB")
     
     if dry_run:
-        print("\n*** DRY RUN MODE - No files were actually deleted ***")
-        print("Run with --execute to actually remove the duplicates")
+        print("\n*** DRY RUN MODE - No files were actually processed ***")
+        if move_to_duplicates:
+            print("Run with --move-duplicates to move duplicates to 'Duplicates' folder")
+        else:
+            print("Run with --execute to actually remove the duplicates")
+            print("Or use --move-duplicates to move them to 'Duplicates' folder instead")
 
 def main():
     parser = argparse.ArgumentParser(description='Remove duplicate images from a folder')
     parser.add_argument('folder', help='Path to folder containing images')
-    parser.add_argument('--execute', action='store_true', help='Actually delete files (default is dry-run)')
-    parser.add_argument('--similarity', type=int, default=5, help='Similarity threshold (0-10, lower = more strict)')
+    
+    # Create mutually exclusive group for action options
+    action_group = parser.add_mutually_exclusive_group()
+    action_group.add_argument('--execute', action='store_true', 
+                             help='Actually delete duplicate files (default is dry-run)')
+    action_group.add_argument('--move-duplicates', action='store_true',
+                             help='Move duplicates to "Duplicates" folder instead of deleting them')
+    
+    parser.add_argument('--similarity', type=int, default=5, 
+                       help='Similarity threshold (0-10, lower = more strict)')
     
     args = parser.parse_args()
     
@@ -189,7 +249,24 @@ def main():
         print("⚠ HEIC/HEIF support not available. Install pillow-heif for HEIC support:")
         print("  pip install pillow-heif")
     
-    remove_duplicates(args.folder, dry_run=not args.execute, similarity_threshold=args.similarity)
+    # Determine mode
+    if args.move_duplicates:
+        print("Mode: Move duplicates to 'Duplicates' folder")
+        dry_run = False
+        move_to_duplicates = True
+    elif args.execute:
+        print("Mode: Delete duplicates")
+        dry_run = False
+        move_to_duplicates = False
+    else:
+        print("Mode: Dry run (preview only)")
+        dry_run = True
+        move_to_duplicates = False
+    
+    print()
+    
+    remove_duplicates(args.folder, dry_run=dry_run, move_to_duplicates=move_to_duplicates, 
+                     similarity_threshold=args.similarity)
 
 if __name__ == "__main__":
     main()

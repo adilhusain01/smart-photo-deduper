@@ -7,7 +7,11 @@ A Python script that intelligently finds and removes duplicate images based on v
 - **Smart Detection**: Uses perceptual hashing to identify visually similar images regardless of file size, compression, or format
 - **Quality Priority**: Automatically keeps the highest resolution version, or largest file size if resolution is the same
 - **Multi-Format Support**: Handles JPEG, PNG, BMP, TIFF, WebP, and HEIC/HEIF (iPhone photos)
-- **Safe Operation**: Dry-run mode by default - preview what will be deleted before actually removing files
+- **Three Operation Modes**: 
+  - **Preview mode** (default): Safe dry-run to see what would be processed
+  - **Delete mode**: Permanently remove duplicates
+  - **Move mode**: Move duplicates to a separate "Duplicates" folder for review
+- **Smart Conflict Resolution**: Handles filename conflicts when moving files
 - **Adjustable Sensitivity**: Customize similarity threshold for strict or lenient matching
 - **Detailed Reporting**: Shows file sizes, dimensions, and space savings
 
@@ -35,10 +39,13 @@ Save the `duplicate_remover.py` script to your computer.
 ### Basic Usage
 
 ```bash
-# Preview what would be removed (safe mode)
+# Preview what would be processed (safe mode - default)
 python duplicate_remover.py /path/to/your/photos
 
-# Actually remove duplicates
+# Move duplicates to "Duplicates" folder (safest option)
+python duplicate_remover.py /path/to/your/photos --move-duplicates
+
+# Permanently delete duplicates
 python duplicate_remover.py /path/to/your/photos --execute
 ```
 
@@ -46,13 +53,13 @@ python duplicate_remover.py /path/to/your/photos --execute
 
 ```bash
 # Adjust similarity threshold (0-10, lower = more strict)
-python duplicate_remover.py /path/to/photos --similarity 3
+python duplicate_remover.py /path/to/photos --similarity 3 --move-duplicates
 
 # More lenient matching (good for different formats/compression)
-python duplicate_remover.py /path/to/photos --similarity 8
+python duplicate_remover.py /path/to/photos --similarity 8 --execute
 
-# Combine options
-python duplicate_remover.py /path/to/photos --similarity 5 --execute
+# Very strict matching with move to duplicates folder
+python duplicate_remover.py /path/to/photos --similarity 1 --move-duplicates
 ```
 
 ### Command Line Arguments
@@ -60,8 +67,35 @@ python duplicate_remover.py /path/to/photos --similarity 5 --execute
 | Argument | Description | Default |
 |----------|-------------|---------|
 | `folder` | Path to folder containing images | Required |
-| `--execute` | Actually delete files (default is dry-run) | False |
+| `--execute` | Actually delete duplicate files | False (dry-run) |
+| `--move-duplicates` | Move duplicates to "Duplicates" folder | False (dry-run) |
 | `--similarity` | Similarity threshold (0-10, lower = more strict) | 5 |
+
+**Note**: `--execute` and `--move-duplicates` are mutually exclusive - you can only use one at a time.
+
+## Operation Modes
+
+### 1. Preview Mode (Default)
+- **Command**: `python duplicate_remover.py /path/to/photos`
+- **Action**: Shows what would be processed without making any changes
+- **Safety**: 100% safe - no files are modified
+- **Use**: Perfect for first-time runs to see what duplicates exist
+
+### 2. Move Mode (Recommended)
+- **Command**: `python duplicate_remover.py /path/to/photos --move-duplicates`
+- **Action**: Moves duplicate files to a "Duplicates" subfolder
+- **Safety**: Very safe - you can review and restore files easily
+- **Benefits**: 
+  - Original files stay in place
+  - Duplicates are organized in a separate folder
+  - Easy to review before permanent deletion
+  - Handles filename conflicts automatically
+
+### 3. Delete Mode
+- **Command**: `python duplicate_remover.py /path/to/photos --execute`
+- **Action**: Permanently deletes duplicate files
+- **Safety**: Use with caution - files are permanently removed
+- **Use**: When you're confident about the duplicates to remove
 
 ## How It Works
 
@@ -71,8 +105,8 @@ python duplicate_remover.py /path/to/photos --similarity 5 --execute
 4. **Selects** the best quality image from each group:
    - Highest resolution (pixel count)
    - If resolution is same, largest file size
-5. **Reports** what will be removed and space saved
-6. **Removes** duplicates (only if `--execute` is used)
+5. **Reports** what will be processed and space savings
+6. **Processes** duplicates according to chosen mode
 
 ## Supported Formats
 
@@ -85,9 +119,13 @@ python duplicate_remover.py /path/to/photos --similarity 5 --execute
 
 ## Example Output
 
+### Preview Mode
 ```
 Image Duplicate Remover
 ==============================
+✓ HEIC/HEIF support enabled
+Mode: Dry run (preview only)
+
 Scanning folder: /Users/john/Photos
 Found 127 image files
 Processing 1/127: IMG_1234.jpg
@@ -98,21 +136,37 @@ Found 12 groups of duplicates:
 
 Group 1 (3 duplicates):
   [KEEP] vacation_sunset_4032x3024.heic - 4032x3024 - 3.2MB
-  [REMOVE] vacation_sunset_2048x1536.jpg - 2048x1536 - 1.8MB
-  [REMOVE] vacation_sunset_small.jpg - 1024x768 - 0.5MB
-
-Group 2 (2 duplicates):
-  [KEEP] family_photo_original.png - 3000x2000 - 4.1MB
-  [REMOVE] family_photo_compressed.jpg - 3000x2000 - 2.3MB
-
-...
+  [DELETE] vacation_sunset_2048x1536.jpg - 2048x1536 - 1.8MB
+  [DELETE] vacation_sunset_small.jpg - 1024x768 - 0.5MB
 
 Summary:
-Files to remove: 23
+Files to delete: 23
 Space to save: 45.67 MB
 
-*** DRY RUN MODE - No files were actually deleted ***
-Run with --execute to actually remove the duplicates
+*** DRY RUN MODE - No files were actually processed ***
+Run with --move-duplicates to move duplicates to 'Duplicates' folder
+Or use --execute to actually remove the duplicates
+```
+
+### Move Mode
+```
+Image Duplicate Remover
+==============================
+✓ HEIC/HEIF support enabled
+Mode: Move duplicates to 'Duplicates' folder
+
+Created folder: /Users/john/Photos/Duplicates
+
+Group 1 (3 duplicates):
+  [KEEP] vacation_sunset_4032x3024.heic - 4032x3024 - 3.2MB
+  [MOVE] vacation_sunset_2048x1536.jpg - 2048x1536 - 1.8MB
+  [MOVE] vacation_sunset_small.jpg - 1024x768 - 0.5MB
+    Moved: vacation_sunset_2048x1536.jpg -> Duplicates/vacation_sunset_2048x1536.jpg
+    Moved: vacation_sunset_small.jpg -> Duplicates/vacation_sunset_small.jpg
+
+Summary:
+Files moved to Duplicates folder: 23
+Space organized: 45.67 MB
 ```
 
 ## Use Cases
@@ -120,10 +174,27 @@ Run with --execute to actually remove the duplicates
 ### Perfect For
 
 - **iPhone Photo Libraries**: Compare HEIC originals with shared JPEG copies
-- **Edited Photos**: Keep originals, remove lower-quality exports
-- **Downloaded Images**: Remove duplicate downloads in different sizes
+- **Edited Photos**: Keep originals, organize lower-quality exports
+- **Downloaded Images**: Organize duplicate downloads in different sizes
 - **Social Media**: Clean up photos saved at different resolutions
 - **Backup Cleanup**: Merge photo collections from different sources
+- **Photo Organization**: Separate originals from duplicates for manual review
+
+### Workflow Recommendations
+
+1. **First Run**: Use preview mode to understand what duplicates exist
+   ```bash
+   python duplicate_remover.py /path/to/photos
+   ```
+
+2. **Safe Organization**: Use move mode to separate duplicates
+   ```bash
+   python duplicate_remover.py /path/to/photos --move-duplicates
+   ```
+
+3. **Review**: Check the "Duplicates" folder to verify the moved files
+
+4. **Clean Up**: Delete the "Duplicates" folder when satisfied, or restore any files you want to keep
 
 ### Example Scenarios
 
@@ -134,10 +205,12 @@ Run with --execute to actually remove the duplicates
 
 ## Safety Features
 
-- **Dry-run by default**: Never deletes anything unless you use `--execute`
+- **Dry-run by default**: Never modifies anything unless you specify a mode
+- **Move option**: Safest way to handle duplicates - easy to undo
 - **Error handling**: Skips corrupted files without crashing
-- **Detailed preview**: Shows exactly what will be kept and removed
+- **Detailed preview**: Shows exactly what will be kept and processed
 - **Quality preservation**: Always keeps the highest quality version
+- **Conflict resolution**: Automatically handles filename conflicts in Duplicates folder
 
 ## Similarity Threshold Guide
 
@@ -152,7 +225,7 @@ Run with --execute to actually remove the duplicates
 
 ### HEIC Files Not Supported
 ```
-HEIC/HEIF support not available. Install pillow-heif for HEIC support
+⚠ HEIC/HEIF support not available. Install pillow-heif for HEIC support
 ```
 **Solution**: `pip install pillow-heif`
 
@@ -162,6 +235,18 @@ Make sure you have write permissions to the folder containing the images.
 ### Memory Issues with Large Collections
 For folders with 1000+ images, consider processing subdirectories separately.
 
+### Filename Conflicts in Duplicates Folder
+The script automatically handles this by adding number suffixes (e.g., `image_1.jpg`, `image_2.jpg`).
+
+## Best Practices
+
+1. **Start with Preview**: Always run in preview mode first to understand what will be processed
+2. **Use Move Mode**: Safer than direct deletion - you can always review and restore
+3. **Backup Important Photos**: Before running any duplicate removal, ensure you have backups
+4. **Test with Small Folders**: Try the script on a small test folder first
+5. **Adjust Similarity**: Start with default threshold (5) and adjust based on results
+6. **Review Moved Files**: Check the "Duplicates" folder before permanently deleting
+
 ## Contributing
 
 Feel free to submit issues and enhancement requests! This script can be extended with additional features like:
@@ -170,6 +255,7 @@ Feel free to submit issues and enhancement requests! This script can be extended
 - More hash algorithms
 - Video duplicate detection
 - Recursive folder processing
+- Batch processing multiple folders
 
 ## License
 
