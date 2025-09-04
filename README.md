@@ -1,16 +1,16 @@
-# Image Duplicate Remover
+# Photo Duplicate Organizer
 
-A Python script that intelligently finds and removes duplicate images based on visual similarity, keeping the highest quality version. Perfect for cleaning up photo collections with different file sizes, formats, and names of the same image.
+A Python script that intelligently finds and organizes duplicate photos based on visual similarity, keeping the highest quality version in place while moving duplicates to a separate folder. Perfect for cleaning up photo collections with different file sizes, formats, and names of the same image.
 
 ## Features
 
 - **Smart Detection**: Uses perceptual hashing to identify visually similar images regardless of file size, compression, or format
 - **Quality Priority**: Automatically keeps the highest resolution version, or largest file size if resolution is the same
 - **Multi-Format Support**: Handles JPEG, PNG, BMP, TIFF, WebP, and HEIC/HEIF (iPhone photos)
-- **Three Operation Modes**: 
+- **Two Safe Operation Modes**: 
   - **Preview mode** (default): Safe dry-run to see what would be processed
-  - **Delete mode**: Permanently remove duplicates
-  - **Move mode**: Move duplicates to a separate "Duplicates" folder for review
+  - **Organize mode**: Move duplicates to a separate "Duplicates" folder for review
+  - **Delete mode**: Permanently remove duplicates (for advanced users)
 - **Smart Conflict Resolution**: Handles filename conflicts when moving files
 - **Adjustable Sensitivity**: Customize similarity threshold for strict or lenient matching
 - **Detailed Reporting**: Shows file sizes, dimensions, and space savings
@@ -34,18 +34,20 @@ pip install Pillow imagehash pillow-heif
 
 Save the `duplicate_remover.py` script to your computer.
 
+**Suggested filename**: `photo_duplicate_organizer.py` (more descriptive)
+
 ## Usage
 
-### Basic Usage
+### Basic Usage (Recommended for New Users)
 
 ```bash
-# Preview what would be processed (safe mode - default)
+# Step 1: Preview what would be organized (completely safe)
 python duplicate_remover.py /path/to/your/photos
 
-# Move duplicates to "Duplicates" folder (safest option)
+# Step 2: Organize duplicates into "Duplicates" folder (recommended)
 python duplicate_remover.py /path/to/your/photos --move-duplicates
 
-# Permanently delete duplicates
+# Advanced: Permanently delete duplicates (use with caution)
 python duplicate_remover.py /path/to/your/photos --execute
 ```
 
@@ -56,9 +58,9 @@ python duplicate_remover.py /path/to/your/photos --execute
 python duplicate_remover.py /path/to/photos --similarity 3 --move-duplicates
 
 # More lenient matching (good for different formats/compression)
-python duplicate_remover.py /path/to/photos --similarity 8 --execute
+python duplicate_remover.py /path/to/photos --similarity 8 --move-duplicates
 
-# Very strict matching with move to duplicates folder
+# Very strict matching
 python duplicate_remover.py /path/to/photos --similarity 1 --move-duplicates
 ```
 
@@ -81,7 +83,7 @@ python duplicate_remover.py /path/to/photos --similarity 1 --move-duplicates
 - **Safety**: 100% safe - no files are modified
 - **Use**: Perfect for first-time runs to see what duplicates exist
 
-### 2. Move Mode (Recommended)
+### 2. Organize Mode (Recommended for Everyone)
 - **Command**: `python duplicate_remover.py /path/to/photos --move-duplicates`
 - **Action**: Moves duplicate files to a "Duplicates" subfolder
 - **Safety**: Very safe - you can review and restore files easily
@@ -90,12 +92,14 @@ python duplicate_remover.py /path/to/photos --similarity 1 --move-duplicates
   - Duplicates are organized in a separate folder
   - Easy to review before permanent deletion
   - Handles filename conflicts automatically
+  - **Perfect for beginners and everyday use**
 
-### 3. Delete Mode
+### 3. Delete Mode (Advanced Users Only)
 - **Command**: `python duplicate_remover.py /path/to/photos --execute`
 - **Action**: Permanently deletes duplicate files
-- **Safety**: Use with caution - files are permanently removed
-- **Use**: When you're confident about the duplicates to remove
+- **Safety**: ⚠️ **USE WITH EXTREME CAUTION** - files are permanently removed
+- **Use**: Only when you're 100% confident about the duplicates
+- **Recommendation**: Always use organize mode first, then delete the "Duplicates" folder manually after review
 
 ## How It Works
 
@@ -121,36 +125,34 @@ python duplicate_remover.py /path/to/photos --similarity 1 --move-duplicates
 
 ### Preview Mode
 ```
-Image Duplicate Remover
+Photo Duplicate Organizer
 ==============================
 ✓ HEIC/HEIF support enabled
 Mode: Dry run (preview only)
 
 Scanning folder: /Users/john/Photos
 Found 127 image files
-Processing 1/127: IMG_1234.jpg
-Processing 2/127: IMG_1234_edited.png
-...
+Processing batch 1/2
+Processing batch 2/2
 
 Found 12 groups of duplicates:
 
 Group 1 (3 duplicates):
   [KEEP] vacation_sunset_4032x3024.heic - 4032x3024 - 3.2MB
-  [DELETE] vacation_sunset_2048x1536.jpg - 2048x1536 - 1.8MB
-  [DELETE] vacation_sunset_small.jpg - 1024x768 - 0.5MB
+  [MOVE] vacation_sunset_2048x1536.jpg - 2048x1536 - 1.8MB
+  [MOVE] vacation_sunset_small.jpg - 1024x768 - 0.5MB
 
 Summary:
-Files to delete: 23
-Space to save: 45.67 MB
+Files to organize: 23
+Space to organize: 45.67 MB
 
 *** DRY RUN MODE - No files were actually processed ***
-Run with --move-duplicates to move duplicates to 'Duplicates' folder
-Or use --execute to actually remove the duplicates
+Run with --move-duplicates to organize duplicates into 'Duplicates' folder
 ```
 
-### Move Mode
+### Organize Mode
 ```
-Image Duplicate Remover
+Photo Duplicate Organizer
 ==============================
 ✓ HEIC/HEIF support enabled
 Mode: Move duplicates to 'Duplicates' folder
@@ -180,21 +182,31 @@ Space organized: 45.67 MB
 - **Backup Cleanup**: Merge photo collections from different sources
 - **Photo Organization**: Separate originals from duplicates for manual review
 
-### Workflow Recommendations
+### Recommended Workflow (Especially for New Users)
 
 1. **First Run**: Use preview mode to understand what duplicates exist
    ```bash
    python duplicate_remover.py /path/to/photos
    ```
+   ✅ **100% Safe** - Nothing is changed
 
-2. **Safe Organization**: Use move mode to separate duplicates
+2. **Organize**: Use move mode to separate duplicates
    ```bash
    python duplicate_remover.py /path/to/photos --move-duplicates
    ```
+   ✅ **Very Safe** - Files moved to "Duplicates" folder
 
 3. **Review**: Check the "Duplicates" folder to verify the moved files
+   - Browse through moved files
+   - Restore any files you want to keep
 
-4. **Clean Up**: Delete the "Duplicates" folder when satisfied, or restore any files you want to keep
+4. **Clean Up**: Delete the "Duplicates" folder when satisfied
+   ```bash
+   # Only after you've reviewed everything!
+   rm -rf /path/to/photos/Duplicates
+   ```
+
+**💡 Pro Tip**: Never use `--execute` unless you're 100% sure. The organize mode gives you full control!
 
 ### Example Scenarios
 
@@ -241,11 +253,12 @@ The script automatically handles this by adding number suffixes (e.g., `image_1.
 ## Best Practices
 
 1. **Start with Preview**: Always run in preview mode first to understand what will be processed
-2. **Use Move Mode**: Safer than direct deletion - you can always review and restore
-3. **Backup Important Photos**: Before running any duplicate removal, ensure you have backups
+2. **Use Organize Mode**: Much safer than direct deletion - you can always review and restore
+3. **Backup Important Photos**: Before running any organization, ensure you have backups
 4. **Test with Small Folders**: Try the script on a small test folder first
 5. **Adjust Similarity**: Start with default threshold (5) and adjust based on results
-6. **Review Moved Files**: Check the "Duplicates" folder before permanently deleting
+6. **Review Moved Files**: Always check the "Duplicates" folder before permanently deleting
+7. **Avoid --execute**: Only use deletion mode if you're an advanced user and 100% confident
 
 ## Contributing
 
